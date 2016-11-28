@@ -1,0 +1,113 @@
+---
+title: "Lokaverkefni"
+author: "Þórgnýr Thoroddsen"
+date: "11/23/2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(ggmap)
+library(geo)
+library(dplyr)
+```
+
+```{r}
+Length <- read.table("./data/Length.csv", header = TRUE, sep = ",")
+Station <- read.table("./data/Station.csv", header = TRUE, sep = ",")
+Subsampling <- read.table("./data/Subsampling.csv", header = TRUE, sep = ",")
+```
+
+
+```{r}
+names(Station)[1]<-'id'
+names(Subsampling)[1]<-'id'
+names(Length)[1]<-'id'
+```
+
+From the date columns read the year of the survey.
+
+```{r}
+Station$year <- format(as.Date(Station$date1, format="%Y-%m-%d"),"%Y")
+```
+
+Change lon1/lat1 to lon/lat
+
+```{r}
+names(Station)[4] <- "lon"
+names(Station)[5] <- "lat"
+```
+
+Removing NA values from Station for aestetic purposes.
+
+```{r}
+Station.NAfree <- Station[complete.cases(Station), ]
+```
+
+Investigate the location of the tow station. Choose a year, e.g. the year 2005, and plot the location of the tows from the stations table on a map of the Icelandic continental shelf. Using geom_segment, illustrate the start and end points of the tows.
+
+Begin by subsetting the data by the year 1998.
+
+```{r}
+Station.1998 <- 
+  filter(Station.NAfree, year == '1998')
+```
+
+Plot the locations of the tows.
+
+```{r}
+eff.plot <- 
+  ggplot(Station.1998, aes(lon, lat)) +
+
+  ## depth contours (as polygons
+  geom_polygon(data = gbdypi.100, alpha = 0.1, col = 'gray90') +
+  geom_polygon(data = gbdypi.200, alpha = 0.1, col = 'gray90') + 
+  geom_polygon(data = island, col = 'gray90') +
+
+  ## locations
+  geom_point(size = 0.1) +
+
+  ## coordinate map (changed from cartesian to mercator)
+  coord_map('mercator', xlim = c(-28, -11), ylim = c(62.5, 68)) +
+  xlab('Longitude') +
+  ylab('Latitude') + 
+
+  ## manual scales
+  scale_colour_manual(values = c('red', 'blue', 'green')) +
+
+  ## themes and change the legend position
+  theme_bw() +
+  theme(panel.border = element_rect(colour = 'black', size = 2),
+        legend.position = c(0.9, 0.85),
+        legend.background = element_rect(fill = 'white')) +
+
+  ## gridlines
+  scale_x_continuous(breaks = seq(-26, -11, 2))  +
+  scale_y_continuous(breaks = seq(63, 67, 1)) +
+
+  ## Lines
+  geom_segment(aes(x = lon, y = lat, xend = lon2, yend = lat2, colour = "Direction and length of tow"), arrow = arrow(length = unit(0.1, "cm"))) +
+
+  ## Removing legend name and reposition.
+  theme(legend.title = element_blank()) +
+  theme(legend.position = "right")
+
+eff.plot
+```
+
+For each station, calculate the ratio of the total number to measured fish i.e. 
+$$r = \frac{n.total}{n.measured}$$
+and when $r$ is NA replace it with the value 1.
+
+```{r}
+Subsampling$ratio <- 
+  Subsampling$n.total/Subsampling$n.measured
+
+Subsampling$ratio[Subsampling$ratio == Inf] <- 1
+```
+
+
+
+
+
